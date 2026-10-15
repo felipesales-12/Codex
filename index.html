@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="pt-BR" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#142e3a">
+  <meta name="compasso-release" content="development">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="description" content="Organize atividades, prioridades e histórico no navegador, com dados locais e acesso pela sua rede.">
+  <title>Compasso · Atividades locais</title>
+  <link rel="icon" type="image/svg+xml" href="./favicon.svg">
+  <link rel="apple-touch-icon" href="./icons/icon-192.png">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="stylesheet" href="./css/style.css">
+  <script type="module" src="./js/app.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Ir para o conteúdo</a>
+  <aside class="sidebar" id="sidebar" aria-label="Menu principal">
+    <a class="brand" href="#dashboard" aria-label="Compasso, início"><span class="brand-mark">c<span>•</span></span><span>compasso<small>GESTÃO DE ATIVIDADES</small></span></a>
+    <div class="workspace"><span class="workspace-icon" data-icon="grid"></span><div>Meu espaço<small>Atividades pessoais</small></div><span class="local-dot"></span></div>
+    <span class="nav-label">PRINCIPAL</span>
+    <nav id="navigation">
+      <a href="#dashboard" data-page="dashboard"><span data-icon="grid"></span>Dashboard</a>
+      <button type="button" data-action="new"><span data-icon="plus"></span>Nova atividade</button>
+      <a href="#pendentes" data-page="pendentes"><span data-icon="list"></span>Pendentes<span class="nav-count" id="pending-count">0</span></a>
+      <a href="#andamento" data-page="andamento"><span data-icon="clock"></span>Em andamento<span class="nav-count" id="progress-count">0</span></a>
+      <a href="#historico" data-page="historico"><span data-icon="history"></span>Histórico de concluídas</a>
+      <span class="nav-label">GERENCIAR</span>
+      <a href="#backup" data-page="backup"><span data-icon="backup"></span>Backup e restauração</a>
+      <a href="#configuracoes" data-page="configuracoes"><span data-icon="settings"></span>Configurações</a>
+    </nav>
+    <div class="sidebar-bottom"><div class="privacy-card"><span data-icon="shield"></span><strong>Seu trabalho, no seu navegador.</strong><p>Sem nuvem. Dados locais.<br>Seus dados ficam com você.</p><a href="#backup">Mantenha um backup <span data-icon="arrow"></span></a></div><div class="sidebar-footer"><span class="local-dot"></span>Armazenamento local<span>v1.0</span></div></div>
+  </aside>
+  <button class="sidebar-overlay" type="button" data-action="menu-close" aria-label="Fechar menu" hidden></button>
+  <div class="app-shell">
+    <header class="topbar"><div class="breadcrumb"><button class="icon-button mobile-menu" data-action="menu" aria-label="Abrir menu"><span data-icon="menu"></span></button><span>Meu espaço</span><span data-icon="chevron"></span><strong id="breadcrumb-page">Dashboard</strong></div><div class="topbar-tools"><button class="button secondary install-button" data-action="install-app" id="install-app" hidden><span data-icon="download"></span>Instalar app</button><span class="local-badge" id="connection-status" role="status"><span class="local-dot"></span><span>Dados neste navegador</span></span><button class="icon-button" data-action="toggle-theme" id="theme-toggle" aria-label="Alternar tema"><span data-icon="moon"></span></button><span class="avatar" title="Espaço pessoal">EU</span></div></header>
+    <div class="web-update" id="web-update" role="status" hidden><span>Uma nova versão do Compasso está pronta.</span><button class="button secondary" id="update-app" type="button">Atualizar agora</button></div>
+    <main id="main" tabindex="-1"><div class="loading" role="status">Abrindo seu espaço de trabalho…</div></main>
+    <footer class="app-footer"><span data-icon="shield"></span><span id="save-status">Conectando ao banco local…</span><span>Feito para organizar o seu dia.</span></footer>
+  </div>
+  <dialog id="task-dialog" class="task-dialog" aria-labelledby="task-dialog-title">
+    <form id="task-form">
+      <div class="dialog-heading"><div><span class="eyebrow">ORGANIZE O PRÓXIMO PASSO</span><h2 id="task-dialog-title">Nova atividade</h2></div><button type="button" class="icon-button" data-action="close-task" aria-label="Fechar formulário"><span data-icon="close"></span></button></div>
+      <p class="form-intro">Os campos com <span class="required">*</span> são obrigatórios.</p>
+      <div class="form-grid">
+        <label class="full">Nome da atividade <span class="required">*</span><input id="task-title" name="title" required maxlength="160" placeholder="Ex.: Inspeção de bomba hidráulica"></label>
+        <label>Solicitante <span class="required">*</span><input name="requester" required maxlength="140" placeholder="Quem solicitou?" list="requester-suggestions"></label>
+        <label>Urgência<select name="priority"><option value="low">Baixa</option><option value="medium" selected>Média</option><option value="high">Alta</option><option value="critical">Crítica</option></select></label>
+        <label class="full">Local de realização <span class="required">*</span><input name="location" required maxlength="140" placeholder="Ex.: Produção — Linha 03"></label>
+        <label>Data prevista<input type="date" name="dueDate" min="1900-01-01" max="9999-12-31"></label>
+        <label>Status<select name="status"><option value="pending">Pendente</option><option value="progress">Em andamento</option><option value="completed">Concluída</option></select></label>
+        <label class="full">Descrição<textarea name="description" rows="4" maxlength="20000" placeholder="Descreva o serviço e as informações necessárias…"></textarea></label>
+        <label class="full">Observações<textarea name="notes" rows="2" maxlength="20000" placeholder="Informações adicionais, materiais ou acompanhamento…"></textarea></label>
+      </div>
+      <datalist id="requester-suggestions"></datalist>
+      <p class="form-note" id="created-note">A data de cadastro será registrada automaticamente.</p>
+      <p id="form-error" class="inline-error" role="alert" hidden></p>
+      <div class="dialog-footer"><button type="button" class="button secondary" data-action="close-task">Cancelar</button><button class="button primary" type="submit" id="save-task">Salvar atividade</button></div>
+    </form>
+  </dialog>
+  <dialog id="detail-dialog" aria-labelledby="detail-title"><div id="detail-content"></div></dialog>
+  <dialog id="confirm-dialog" class="confirm-dialog" aria-labelledby="confirm-title"><form method="dialog"><div class="confirm-icon" id="confirm-icon"></div><h2 id="confirm-title">Confirmar ação</h2><p id="confirm-message"></p><div class="dialog-footer"><button class="button secondary" value="cancel" autofocus>Cancelar</button><button class="button danger" value="confirm" id="confirm-button">Confirmar</button></div></form></dialog>
+  <div id="notifications" class="notifications" aria-live="polite" aria-atomic="false"></div>
+  <noscript>Ative o JavaScript para utilizar o sistema e acessar o banco local de atividades.</noscript>
+</body>
+</html>

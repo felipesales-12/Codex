@@ -1,0 +1,19 @@
+{
+  "name": "compasso-atividades",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Gerenciador local de atividades com IndexedDB e sem dependências de execução externas.",
+  "scripts": {
+    "start": "python3 server.py --no-browser",
+    "start:lan": "python3 server.py --network --no-browser",
+    "build": "node scripts/build.mjs",
+    "preview": "node scripts/preview.mjs",
+    "test": "node --test tests/unit.test.js",
+    "test:e2e": "playwright test",
+    "test:web": "playwright test --config playwright.web.config.js"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.61.1"
+  }
+}

@@ -23,9 +23,12 @@ jobs:
           cache: npm
       - run: npm ci --ignore-scripts --no-audit --no-fund
       - run: npm test
+      - run: npx playwright install --with-deps chromium
+      - run: npx playwright test tests/firebase.spec.js tests/cloud.spec.js
       - run: npm run test:database
       - run: npm run build
         env:
+          CLOUD_PROVIDER: ${{ vars.CLOUD_PROVIDER }}
           SUPABASE_URL: ${{ vars.SUPABASE_URL }}
           SUPABASE_PUBLISHABLE_KEY: ${{ vars.SUPABASE_PUBLISHABLE_KEY }}
       - uses: actions/configure-pages@v5

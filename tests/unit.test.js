@@ -87,3 +87,10 @@ test('revisões internas da nuvem não entram no backup JSON', () => {
   assert.equal(validateBackup(JSON.parse(json)).tasks[0].id, task.id);
   assert.equal(createTask({ ...task, title: 'Edição' }, task)._cloudRevision, 9);
 });
+
+test('configuração Firebase exige URL de banco e configuração Web pública válidas', () => {
+  const valid = { provider: 'firebase', apiKey: 'AIza' + 'a'.repeat(35), projectId: 'teste-c321e', authDomain: 'teste-c321e.firebaseapp.com', databaseURL: 'https://teste-c321e-default-rtdb.firebaseio.com/' };
+  assert.equal(validateCloudConfig(valid).databaseURL, valid.databaseURL.slice(0, -1));
+  assert.equal(validateCloudConfig({ ...valid, databaseURL: 'https://example.europe-west1.firebasedatabase.app' }).configured, true);
+  for (const changes of [{ apiKey: '' }, { authDomain: 'evil.test' }, { projectId: '../other' }, { databaseURL: 'http://example.firebaseio.com' }, { databaseURL: 'https://example.firebaseio.com.evil.test' }, { databaseURL: 'https://example.firebaseio.com/path' }]) assert.throws(() => validateCloudConfig({ ...valid, ...changes }));
+});

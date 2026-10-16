@@ -8,18 +8,18 @@ const root = fileURLToPath(new URL('../', import.meta.url));
 const output = join(root, 'dist');
 export const assets = [
   'index.html', 'favicon.svg', 'manifest.webmanifest', 'css/style.css',
-  'js/app.js', 'js/database.js', 'js/tasks.js', 'js/backup.js', 'js/icons.js', 'js/web.js', 'js/cloud-config.js', 'js/cloud.js', 'js/account.js',
+  'js/app.js', 'js/database.js', 'js/tasks.js', 'js/backup.js', 'js/icons.js', 'js/web.js', 'js/cloud-config.js', 'js/cloud.js', 'js/firebase-cloud.js', 'js/supabase-cloud.js', 'js/account.js',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable.png',
 ];
 
 export async function build() {
   const files = await Promise.all(assets.map(path => readFile(join(root, path))));
-  const override = Boolean(process.env.SUPABASE_URL?.trim() || process.env.SUPABASE_PUBLISHABLE_KEY?.trim());
+  const override = process.env.CLOUD_PROVIDER === 'supabase' || (cloudConfig.provider !== 'firebase' && Boolean(process.env.SUPABASE_URL?.trim() || process.env.SUPABASE_PUBLISHABLE_KEY?.trim()));
   const cloud = validateCloudConfig(override ? { url: process.env.SUPABASE_URL, publishableKey: process.env.SUPABASE_PUBLISHABLE_KEY } : cloudConfig);
   const configIndex = assets.indexOf('js/cloud-config.js');
   const declaration = /export const cloudConfig = Object\.freeze\(\{[^\n]*\}\);/;
   if (!declaration.test(files[configIndex].toString())) throw new Error('Declaração da configuração pública não encontrada. O build foi interrompido.');
-  files[configIndex] = Buffer.from(files[configIndex].toString().replace(declaration, `export const cloudConfig = Object.freeze(${JSON.stringify({ url: cloud.url, publishableKey: cloud.publishableKey })});`));
+  files[configIndex] = Buffer.from(files[configIndex].toString().replace(declaration, `export const cloudConfig = Object.freeze(${JSON.stringify(Object.fromEntries(Object.entries(cloud).filter(([key]) => key !== 'configured')))});`));
   const worker = await readFile(join(root, 'sw.js'), 'utf8');
   const hash = createHash('sha256');
   files.forEach((data, index) => { hash.update(assets[index]); hash.update(data); });

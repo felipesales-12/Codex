@@ -67,3 +67,14 @@ Os registros dos testes ficam em perfis isolados. O projeto entregue inicia sem 
 - **Desconexão física:** foi usada a simulação de rede offline do Playwright e o bloqueio de destinos externos. Não houve desligamento físico de uma interface de rede. No modo Python, o uso diário mantém o HTTP local ou LAN para servir os arquivos. O cache do build foi testado em localhost; service workers não estão disponíveis em IP com HTTP comum.
 - **Outros navegadores:** Edge e Firefox não foram executados nesta validação. A aplicação usa APIs web nativas disponíveis nas versões atuais; use um perfil normal que permita IndexedDB.
 - **Proteção de armazenamento:** a decisão de conceder armazenamento persistente cabe ao navegador; não é uma garantia de backup nem de proteção contra limpeza manual.
+
+
+## Integração Firebase — 16/10/2026
+
+- `npm test`: 10 testes passaram, incluindo validação da configuração pública Firebase.
+- `npx playwright test tests/firebase.spec.js`: 8 testes passaram com HTTP simulado: login/cadastro/recuperação, leitura em outro navegador, persistência após recarga, sessão renovada, isolamento na troca de conta, migração explícita, importação vazia, edição/exclusão, conflitos de versão, ETag concorrente e repetição após perda de confirmação.
+- `npx playwright test tests/cloud.spec.js`: os 9 testes do adaptador Supabase preservado passaram.
+- `npm run test:web`: 3 testes passaram, incluindo carregamento offline do modo local e a subpasta `/Codex/`. O pacote inclui os módulos dos dois provedores; somente o selecionado é carregado pela aplicação.
+- O workflow do Pages agora exige os testes de navegador Firebase e Supabase antes da publicação.
+
+**Limites:** estes testes Firebase simulam o contrato REST; não comprovam as regras no serviço hospedado. Tentamos iniciar Firebase CLI 14.22.0 com emuladores Auth/Database em projeto isolado `demo-compasso`, mas o download oficial do Database Emulator 4.11.2 recebeu `403 Domain forbidden` do proxy. Nenhum teste de regras em emulador foi executado, e o projeto real também foi bloqueado pela política de rede. `firebase/database.rules.json` foi preparado, mas a compilação e a aplicação no console real continuam pendentes. Não houve criação de contas de teste, gravação, leitura de atividades ou migração de dados no projeto real do usuário. É necessário validar login e uma gravação entre dois aparelhos após publicar as regras e habilitar Authentication no console.

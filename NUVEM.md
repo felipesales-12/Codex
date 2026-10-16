@@ -1,8 +1,10 @@
-# Ativar a conta e o banco na nuvem
+# Supabase — provedor alternativo
+
+**O pedido mais recente selecionou Firebase. Siga [FIREBASE.md](FIREBASE.md) para o site atual.** Este documento descreve o adaptador anterior. Para selecioná-lo no build, use `CLOUD_PROVIDER=supabase` com as duas variáveis públicas abaixo. Nenhuma migração entre provedores ocorre automaticamente.
 
 O modo nuvem usa **Supabase Auth + PostgreSQL**. O GitHub Pages continua hospedando apenas os arquivos do site. Não há dados de atividades em commits, no workflow ou nos arquivos publicados. O modo local existente continua disponível.
 
-**Estado desta entrega:** o projeto `https://pzvcsiowxewfzilczsgy.supabase.co` e sua chave publicável foram informados pelo usuário e configurados no frontend. Ainda é necessário confirmar a execução do SQL, o login real e a gravação no banco hospedado. A rede deste ambiente bloqueou o acesso direto ao projeto. Nenhum registro real do navegador foi migrado automaticamente.
+**Estado da integração anterior:** o projeto `https://pzvcsiowxewfzilczsgy.supabase.co` e sua chave publicável foram informados pelo usuário e configurados no frontend. Ainda é necessário confirmar a execução do SQL, o login real e a gravação no banco hospedado. A rede deste ambiente bloqueou o acesso direto ao projeto. Nenhum registro real do navegador foi migrado automaticamente.
 
 ## 1. Criar o projeto
 
@@ -30,20 +32,20 @@ Verifique a entrega dos emails de confirmação e de recuperação. O envio padr
 
 ## 4. Conectar o site publicado
 
-A configuração pública do projeto informado já está em `js/cloud-config.js`; o build a utiliza por padrão, sem exigir novas variáveis no GitHub. A chave publicável é própria para distribuição no frontend e não dá acesso administrativo ao banco. Para substituir essa configuração em outro projeto ou rotacionar a chave pelo GitHub, abra **Settings → Secrets and variables → Actions → Variables** e configure as duas **Repository variables** juntas:
+Para usar o adaptador Supabase, defina `CLOUD_PROVIDER=supabase` e as duas variáveis públicas de projeto no build. O padrão atual é Firebase. A chave publicável é própria para distribuição no frontend e não dá acesso administrativo ao banco. Para substituir essa configuração em outro projeto ou rotacionar a chave pelo GitHub, abra **Settings → Secrets and variables → Actions → Variables** e configure as duas **Repository variables** juntas:
 
 | Nome | Valor |
 | --- | --- |
 | `SUPABASE_URL` | Project URL do seu projeto |
 | `SUPABASE_PUBLISHABLE_KEY` | Chave publicável ou `anon` |
 
-São configurações públicas do cliente e aparecem no JavaScript publicado. A proteção dos registros é feita pelo login e pelas regras do banco, não pelo sigilo da chave publicável. Não use a senha do banco nem chaves com privilégios administrativos nesses campos.
+Defina também a Repository variable `CLOUD_PROVIDER` como `supabase`. São configurações públicas do cliente e aparecem no JavaScript publicado. A proteção dos registros é feita pelo login e pelas regras do banco, não pelo sigilo da chave publicável. Não use a senha do banco nem chaves com privilégios administrativos nesses campos.
 
-Execute novamente **Actions → Publicar Compasso no GitHub Pages → Run workflow**. O workflow usa as duas variáveis, quando preenchidas; sem elas, publica a configuração pública já versionada. Atualizações do aplicativo já instalado podem exibir **Atualizar agora**; finalize edições abertas antes de atualizar.
+Execute novamente **Actions → Publicar Compasso no GitHub Pages → Run workflow**. Com `CLOUD_PROVIDER=supabase`, o workflow exige as duas variáveis Supabase. Sem essa seleção explícita, publica o Firebase configurado no frontend. Atualizações do aplicativo já instalado podem exibir **Atualizar agora**; finalize edições abertas antes de atualizar.
 
 As variáveis do ambiente de desenvolvimento do Codex são separadas das Repository variables do GitHub. Configurar apenas o ambiente do Codex não configura automaticamente o build executado nos servidores do GitHub.
 
-Para um build local de desenvolvimento, forneça as mesmas duas variáveis ao processo `npm run build`. O script não lê um arquivo `.env` automaticamente. Se ambas estiverem ausentes, usa a configuração pública de `js/cloud-config.js`. Se tanto as variáveis quanto a configuração versionada estiverem vazias, gera a versão local sem nuvem. Se somente uma variável estiver preenchida ou houver uma chave proibida, interrompe o build para evitar uma conexão inválida.
+Para um build local de desenvolvimento, forneça as mesmas duas variáveis ao processo `npm run build`. O script não lê um arquivo `.env` automaticamente. Com o código atual, selecione `CLOUD_PROVIDER=supabase` e forneça ambas as variáveis para usar este adaptador. Sem essa seleção, usa o Firebase público de `js/cloud-config.js`. Se tanto as variáveis quanto a configuração versionada estiverem vazias, gera a versão local sem nuvem. Se somente uma variável estiver preenchida ou houver uma chave proibida, interrompe o build para evitar uma conexão inválida.
 
 ## 5. Entrar e migrar as atividades existentes
 

@@ -1,0 +1,41 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "compasso": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid && newData.exists()",
+        ".validate": "newData.hasChildren(['version', 'operations']) && newData.child('version').isNumber() && newData.child('version').val() % 1 === 0 && ((!data.exists() && newData.child('version').val() === 1) || (data.exists() && newData.child('version').val() === data.child('version').val() + 1))",
+        "version": { ".validate": "newData.isNumber() && newData.val() > 0 && newData.val() < 9007199254740991" },
+        "operations": {
+          "$request": { ".validate": "$request.matches(/^[a-zA-Z0-9_-]{1,128}$/) && newData.isNumber() && newData.val() > 0 && newData.val() <= newData.parent().parent().child('version').val() && (!data.exists() || newData.val() === data.val())" }
+        },
+        "tasks": {
+          "$task": {
+            ".validate": "$task.matches(/^t_[A-Za-z0-9_-]+$/) && newData.hasChildren(['payload', 'revision'])",
+            "revision": { ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() > 0 && newData.val() <= newData.parent().parent().parent().child('version').val()" },
+            "payload": {
+              ".validate": "newData.hasChildren(['id','title','requester','location','priority','status','description','notes','dueDate','createdAt','updatedAt']) && ((newData.child('status').val() === 'completed' && newData.child('completedAt').isString()) || (newData.child('status').val() !== 'completed' && !newData.child('completedAt').exists()))",
+              "id": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 100" },
+              "title": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 160" },
+              "requester": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 140" },
+              "location": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 140" },
+              "description": { ".validate": "newData.isString() && newData.val().length <= 20000" },
+              "notes": { ".validate": "newData.isString() && newData.val().length <= 20000" },
+              "priority": { ".validate": "newData.val() === 'low' || newData.val() === 'medium' || newData.val() === 'high' || newData.val() === 'critical'" },
+              "status": { ".validate": "newData.val() === 'pending' || newData.val() === 'progress' || newData.val() === 'completed'" },
+              "dueDate": { ".validate": "newData.isString() && (newData.val() === '' || newData.val().matches(/^\\d{4}-\\d{2}-\\d{2}$/))" },
+              "createdAt": { ".validate": "newData.isString() && newData.val().length <= 30" },
+              "updatedAt": { ".validate": "newData.isString() && newData.val().length <= 30" },
+              "completedAt": { ".validate": "newData.isString() && newData.val().length <= 30" },
+              "$other": { ".validate": false }
+            },
+            "$other": { ".validate": false }
+          }
+        },
+        "$other": { ".validate": false }
+      }
+    }
+  }
+}

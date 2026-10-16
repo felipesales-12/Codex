@@ -1,8 +1,8 @@
 # Compasso — Gerenciador local de atividades
 
-Aplicação em português para organizar atividades, acompanhar urgências e manter um histórico de conclusões. Feita com HTML, CSS e JavaScript nativo. O modo local usa IndexedDB; o novo modo nuvem conecta Supabase Auth e PostgreSQL para acesso à mesma conta em outros aparelhos. Não utiliza fontes remotas ou CDN. A instalação começa vazia, sem atividades de exemplo.
+Aplicação em português para organizar atividades, acompanhar urgências e manter um histórico de conclusões. Feita com HTML, CSS e JavaScript nativo. O modo local usa IndexedDB; o modo nuvem conecta Firebase Authentication e Realtime Database para acesso à mesma conta em outros aparelhos. Não utiliza fontes remotas ou CDN. A instalação começa vazia, sem atividades de exemplo.
 
-**Para ativar o armazenamento na nuvem, siga [NUVEM.md](NUVEM.md).** É necessário criar/configurar um projeto Supabase, executar o SQL e conectar a configuração pública ao build. Até concluir esses passos, as atividades continuam somente no navegador. As instruções de uso sem internet abaixo descrevem o modo local; gravações na nuvem precisam de conexão.
+**Para ativar o armazenamento na nuvem, siga [FIREBASE.md](FIREBASE.md).** A configuração pública do projeto teste-c321e já está no frontend; falta habilitar login, autorizar o domínio e publicar as regras no console Firebase. Nenhuma atividade foi migrada automaticamente. O adaptador anterior do Supabase continua disponível e documentado em [NUVEM.md](NUVEM.md). As instruções de uso sem internet abaixo descrevem o modo local; gravações na nuvem precisam de conexão.
 
 ## Abrir pela internet — GitHub Pages
 
@@ -100,7 +100,10 @@ favicon.svg                Ícone local
 css/style.css              Layout responsivo, temas e estilos
 js/database.js             IndexedDB, transações e preferências
 js/cloud-config.js         Configuração pública e validação de chaves
-js/cloud.js                Login, sessões e operações do banco remoto
+js/cloud.js                Seleção do provedor de nuvem
+js/firebase-cloud.js       Login, sessões e gravações atômicas Firebase
+js/supabase-cloud.js       Adaptador anterior do Supabase
+firebase/database.rules.json Regras de isolamento por conta no Firebase
 js/account.js              Tela de conta e migração
 supabase/schema.sql        Banco e regras de isolamento por usuário
 NUVEM.md                   Ativação do serviço e política de backups

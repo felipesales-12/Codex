@@ -5,3 +5,6 @@ __pycache__/
 *.pyc
 .venv/
 dist/
+.env
+.env.*
+!.env.example

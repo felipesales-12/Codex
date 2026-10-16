@@ -26,7 +26,8 @@ export function validateBackup(data) {
 }
 
 export function backupJSON(tasks, settings) {
-  return JSON.stringify({ format: 'atividades-local', version: 1, exportedAt: new Date().toISOString(), tasks, settings }, null, 2);
+  const records = tasks.map(({ _cloudRevision, ...task }) => task);
+  return JSON.stringify({ format: 'atividades-local', version: 1, exportedAt: new Date().toISOString(), tasks: records, settings }, null, 2);
 }
 
 export function tasksCSV(tasks) {

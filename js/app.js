@@ -1,18 +1,22 @@
-import { database, openDatabase } from './database.js';
+import { database, localDatabase, openDatabase, useCloudDatabase } from './database.js';
 import { priorities, statuses, createTask, selectTasks, getMetrics, dateLabel, dateTimeLabel, duration, isOverdue, localDate } from './tasks.js';
 import { backupJSON, tasksCSV, validateBackup, download } from './backup.js';
 import { icon } from './icons.js';
 import { initializeWeb, webState, installApp } from './web.js';
+import { cloudState, subscribeCloud, initializeCloud, cloudDatabase, signIn, signUp, sendRecovery, updatePassword, signOut } from './cloud.js';
+import { accountPage } from './account.js';
 
 const $ = selector => document.querySelector(selector);
 const html = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const labels = { dashboard: 'Dashboard', atividades: 'Todas as atividades', pendentes: 'Atividades pendentes', andamento: 'Atividades em andamento', historico: 'Histórico de concluídas', backup: 'Backup e restauração', configuracoes: 'Configurações' };
+const labels = { dashboard: 'Dashboard', atividades: 'Todas as atividades', pendentes: 'Atividades pendentes', andamento: 'Atividades em andamento', historico: 'Histórico de concluídas', backup: 'Backup e restauração', configuracoes: 'Configurações', conta: 'Conta e nuvem' };
 let tasks = [], settings = {}, ready = false, busy = false, editingId = null, limit = 50;
 let filters = {};
 let preserveNavigationFilters = false;
 let page = getPage();
 let storagePersisted = false;
 let lastSaved = null;
+let localCount = 0, draftTask = null, cloudInitialized = false, cloudTransition = false;
+let mutationError = '';
 const channel = globalThis.BroadcastChannel ? new BroadcastChannel('compasso-updates') : null;
 
 document.querySelectorAll('[data-icon]').forEach(element => { element.innerHTML = icon(element.dataset.icon); });
@@ -39,7 +43,7 @@ const statusBadge = task => `<span class="badge status ${task.status}">${icon(ta
 const button = (action, title, symbol, id, extra = '') => `<button type="button" class="icon-button ${extra}" data-action="${action}" data-id="${html(id)}" title="${title}" aria-label="${title}">${icon(symbol)}</button>`;
 
 function render() {
-  if (!ready) return;
+  if (!ready && page !== 'conta') return;
   const focused = document.activeElement;
   const focusId = focused?.id;
   const selection = focused?.tagName === 'INPUT' && focused.type === 'search' ? [focused.selectionStart, focused.selectionEnd] : null;
@@ -53,8 +57,10 @@ function render() {
     link.classList.toggle('active', active);
     if (active) link.setAttribute('aria-current', 'page'); else link.removeAttribute('aria-current');
   });
-  $('#save-status').textContent = lastSaved ? `Salvo neste navegador às ${new Date(lastSaved).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}` : 'Dados armazenados neste navegador';
-  $('#main').innerHTML = page === 'dashboard' ? dashboard(metrics) : page === 'backup' ? backupPage() : page === 'configuracoes' ? settingsPage() : listPage();
+  const inCloud = cloudState().mode === 'cloud';
+  $('#save-status').textContent = lastSaved ? `Salvo ${inCloud ? 'na nuvem' : 'neste navegador'} às ${new Date(lastSaved).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}` : inCloud ? 'Dados da conta na nuvem' : 'Dados armazenados neste navegador';
+  $('#main').innerHTML = page === 'dashboard' ? dashboard(metrics) : page === 'backup' ? backupPage() : page === 'configuracoes' ? settingsPage() : page === 'conta' ? accountPage(localCount) : listPage();
+  updateCloudChrome();
   if (focusId) {
     const replacement = document.getElementById(focusId);
     if (replacement && replacement !== focused) { replacement.focus(); if (selection) replacement.setSelectionRange(...selection); }
@@ -109,14 +115,14 @@ function listPage() {
 
 function backupPage() {
   return `${heading('CUIDADO COM SEUS DADOS', 'Uma cópia. Mais tranquilidade.', 'Proteja seu trabalho com backups que ficam sob o seu controle.', false)}
-    <div class="notice warning">${icon('alert')}<div><strong>Seus dados pertencem a este navegador.</strong><p>Limpar os dados do site, apagar o perfil ou usar uma janela anônima pode remover suas atividades. Crie backups JSON regularmente e guarde uma cópia em outro local. Não há sincronização ou backup automático em nuvem.</p></div></div>
+    <div class="notice warning">${icon('alert')}<div><strong>${cloudState().mode === 'cloud' ? 'Mantenha uma cópia independente dos seus dados.' : 'Seus dados pertencem a este navegador.'}</strong><p>${cloudState().mode === 'cloud' ? 'As atividades desta lista estão na sua conta. Exporte backups JSON regularmente e configure a política de backup do banco. Exclusões e restaurações alteram a lista em todos os seus aparelhos. Armazenamento em nuvem não elimina a necessidade de backup.' : 'Limpar os dados do site, apagar o perfil ou usar uma janela anônima pode remover suas atividades. Crie backups JSON regularmente e guarde uma cópia em outro local. Entre em Conta e nuvem para sincronizar quando o serviço estiver configurado.'}</p></div></div>
     <div class="backup-grid"><section class="panel backup-card"><div class="feature-icon green">${icon('download')}</div><h2>Exportar backup completo</h2><p>Um arquivo JSON com todas as atividades, histórico, identificadores, datas e preferências. Use para recuperar seus dados ou migrar de computador.</p><div class="backup-summary"><span>Atividades registradas<strong>${tasks.length}</strong></span><span>Última exportação JSON<strong>${settings.lastBackupAt ? dateTimeLabel(settings.lastBackupAt) : 'Ainda não realizada'}</strong></span></div><button class="button primary" data-action="export-json">${icon('download')}Baixar backup JSON</button></section>
     <section class="panel backup-card"><div class="feature-icon blue">${icon('backup')}</div><h2>Restaurar um backup</h2><p>Selecione um JSON exportado pelo Compasso. O arquivo será validado antes da confirmação. A restauração substitui todas as atividades e preferências atuais.</p><label class="file-drop" for="backup-file">${icon('file')}<strong>Selecionar arquivo JSON</strong><span>Até 20 MB · até 50.000 atividades</span><input id="backup-file" type="file" accept=".json,application/json"></label><p class="small-text">Exporte um backup atual antes de substituir os dados.</p></section></div>
     <section class="panel csv-panel"><div><h2>Leve seus relatórios para a planilha</h2><p>Arquivos CSV compatíveis com Excel, em UTF-8 e com separador ponto e vírgula. CSV é um relatório; use JSON para restaurar dados.</p></div><div class="button-row"><button class="button secondary" data-action="export-active">${icon('download')}Ativas em CSV</button><button class="button secondary" data-action="export-history">${icon('download')}Histórico em CSV</button></div></section>`;
 }
 function settingsPage() {
   const theme = settings.theme || 'system';
-  return `${heading('DO SEU JEITO', 'Seu espaço de trabalho.', 'Pequenas preferências para uma rotina mais confortável.', false)}<section class="panel settings-panel"><div class="setting-row"><div><h2>Aparência</h2><p>Escolha o tema que combina com o seu dia.</p></div><label class="sr-only" for="theme-select">Tema</label><select id="theme-select"><option value="system" ${theme === 'system' ? 'selected' : ''}>Seguir o sistema</option><option value="light" ${theme === 'light' ? 'selected' : ''}>Claro</option><option value="dark" ${theme === 'dark' ? 'selected' : ''}>Escuro</option></select></div><div class="setting-row"><div><h2>Proteção do armazenamento</h2><p>${storagePersisted ? 'O navegador concedeu armazenamento persistente. Mantenha backups mesmo assim.' : 'Solicite ao navegador uma proteção adicional contra remoção automática dos dados. A concessão depende do navegador.'}</p></div><button class="button secondary" data-action="persist" ${storagePersisted ? 'disabled' : ''}>${icon('shield')}${storagePersisted ? 'Proteção concedida' : 'Solicitar proteção'}</button></div><div class="setting-row"><div><h2>Origem dos dados</h2><p>Use sempre o mesmo navegador, perfil e endereço para reencontrar suas atividades.</p></div><code>${html(location.origin)}</code></div>${webSettings()}</section><div class="notice">${icon('info')}<div><strong>Seus dados, neste navegador.</strong><p>As atividades são gravadas no navegador deste aparelho. Na rede local, mantenha o computador servidor ligado e os aparelhos conectados à mesma rede. Não é necessário acesso à internet. Os dados não são sincronizados entre aparelhos; use backups JSON para transferir registros.</p><a class="text-link" href="#backup">Gerenciar meus backups ${icon('arrow')}</a></div></div>`;
+  return `${heading('DO SEU JEITO', 'Seu espaço de trabalho.', 'Pequenas preferências para uma rotina mais confortável.', false)}<section class="panel settings-panel"><div class="setting-row"><div><h2>Aparência</h2><p>Escolha o tema que combina com o seu dia.</p></div><label class="sr-only" for="theme-select">Tema</label><select id="theme-select"><option value="system" ${theme === 'system' ? 'selected' : ''}>Seguir o sistema</option><option value="light" ${theme === 'light' ? 'selected' : ''}>Claro</option><option value="dark" ${theme === 'dark' ? 'selected' : ''}>Escuro</option></select></div><div class="setting-row"><div><h2>Proteção do armazenamento</h2><p>${storagePersisted ? 'O navegador concedeu armazenamento persistente. Mantenha backups mesmo assim.' : 'Solicite ao navegador uma proteção adicional contra remoção automática dos dados. A concessão depende do navegador.'}</p></div><button class="button secondary" data-action="persist" ${storagePersisted ? 'disabled' : ''}>${icon('shield')}${storagePersisted ? 'Proteção concedida' : 'Solicitar proteção'}</button></div><div class="setting-row"><div><h2>Origem dos dados</h2><p>Use sempre o mesmo navegador, perfil e endereço para reencontrar suas atividades.</p></div><code>${html(location.origin)}</code></div>${webSettings()}</section><div class="notice">${icon('info')}<div><strong>${cloudState().mode === 'cloud' ? 'Sua conta, em qualquer aparelho.' : 'Seus dados, neste navegador.'}</strong><p>${cloudState().mode === 'cloud' ? 'As atividades são gravadas na sua conta. Entre com a mesma conta em outro aparelho para acessar a lista. A nuvem precisa de internet para carregar e salvar alterações; mantenha backups JSON independentes. O tema continua sendo uma preferência deste aparelho.' : 'As atividades são gravadas no navegador deste aparelho. Para acessá-las em outros aparelhos, abra Conta e nuvem, entre e confirme o envio dos dados locais. Até confirmar a migração, seus registros continuam somente neste navegador.'}</p><a class="text-link" href="#backup">Gerenciar meus backups ${icon('arrow')}</a></div></div>`;
 }
 
 function webSettings() {
@@ -132,6 +138,7 @@ function openTask(task = null, duplicate = false) {
   const form = $('#task-form');
   form.reset();
   editingId = duplicate ? null : task?.id || null;
+  draftTask = null;
   $('#form-error').hidden = true;
   $('#task-dialog-title').textContent = duplicate ? 'Duplicar atividade' : task ? 'Editar atividade' : 'Nova atividade';
   if (task) {
@@ -164,11 +171,13 @@ function confirmAction(title, message, label = 'Excluir permanentemente', danger
 async function commit(operation, message) {
   if (busy) return false;
   busy = true;
+  mutationError = '';
   let persisted = false;
   try {
     await operation();
     persisted = true;
     tasks = await database.all();
+    if (cloudState().mode === 'local') localCount = tasks.length;
     lastSaved = new Date().toISOString();
     render();
     channel?.postMessage('updated');
@@ -181,6 +190,7 @@ async function commit(operation, message) {
       return true;
     }
     notify(`Não foi possível salvar a operação. ${error.message || 'Verifique o espaço livre e tente novamente.'}`, true);
+    mutationError = error.message || 'Não foi possível confirmar a operação.';
     return false;
   } finally { busy = false; }
 }
@@ -194,16 +204,17 @@ $('#task-form').addEventListener('submit', async event => {
     input.setCustomValidity(input.value.trim() ? '' : 'Preencha este campo com um texto.');
   }
   if (!form.reportValidity()) return;
-  const original = editingId ? tasks.find(t => t.id === editingId) : null;
+  const original = editingId ? tasks.find(t => t.id === editingId) : draftTask;
   if (editingId && !original) return notify('Esta atividade foi removida em outra aba. Feche o formulário e atualize a lista.', true);
   const task = createTask(Object.fromEntries(new FormData(form)), original);
+  if (!editingId) draftTask = task;
   $('#save-task').disabled = true;
   $('#save-task').textContent = 'Salvando…';
-  const success = await commit(() => original ? database.put(task) : database.add(task), original ? 'Atividade atualizada.' : 'Atividade cadastrada. Bom trabalho!');
+  const success = await commit(() => editingId ? database.put(task) : database.add(task), editingId ? 'Atividade atualizada.' : 'Atividade cadastrada. Bom trabalho!');
   $('#save-task').disabled = false;
   $('#save-task').textContent = 'Salvar atividade';
   if (success) $('#task-dialog').close();
-  else { $('#form-error').textContent = 'A atividade não foi salva. Seus campos continuam aqui; tente novamente.'; $('#form-error').hidden = false; }
+  else { $('#form-error').textContent = cloudState().mode === 'cloud' ? `${mutationError} A gravação na nuvem não foi confirmada. Seus campos continuam aqui; tente novamente ou sincronize a lista.` : 'A atividade não foi salva. Seus campos continuam aqui; tente novamente.'; $('#form-error').hidden = false; }
 });
 $('#task-form').addEventListener('input', event => event.target.setCustomValidity?.(''));
 
@@ -222,7 +233,31 @@ async function actionHandler(action, element) {
     $('.sidebar-overlay').hidden = !open;
     return;
   }
+  if (action === 'cloud-logout') {
+    if (busy || cloudTransition) return;
+    cloudTransition = true; tasks = []; ready = false; lastSaved = null;
+    $('#main').innerHTML = '<div class="loading" role="status">Encerrando o acesso à conta…</div>';
+    try { await signOut(); await initialize(); navigate('conta'); }
+    finally { cloudTransition = false; }
+    return;
+  }
+  if (action === 'cloud-sync') {
+    if (busy || cloudTransition || document.querySelector('dialog[open]')) return;
+    if (!ready) return initialize();
+    await refresh(false);
+    return;
+  }
   if (!ready) return notify('O banco local ainda não está disponível. Tente reabrir o sistema.', true);
+  if (action === 'cloud-migrate') {
+    if (cloudState().mode !== 'cloud' || !cloudState().authenticated) return;
+    const records = await localDatabase.all();
+    validateBackup({ format: 'atividades-local', version: 1, tasks: records, settings: {} });
+    if (!records.length) return notify('Não há atividades locais para enviar.');
+    if (await confirmAction('Enviar atividades locais para sua conta?', `Serão copiadas ${records.length} atividade(s) para ${cloudState().email}. Os registros locais serão preservados. Atividades da nuvem não serão substituídas.`, 'Enviar para a nuvem', false)) {
+      await commit(() => cloudDatabase.merge(records), 'Atividades locais copiadas para a sua conta na nuvem.');
+    }
+    return;
+  }
   if (action === 'new') return openTask();
   if (action === 'close-task') { if (!busy) $('#task-dialog').close(); return; }
   if (action === 'close-details') return $('#detail-dialog').close();
@@ -264,7 +299,7 @@ async function actionHandler(action, element) {
   if (action === 'details') return openDetails(task);
   if (action === 'edit' || action === 'duplicate') { $('#detail-dialog').close(); return openTask(task, action === 'duplicate'); }
   if (action === 'delete') {
-    if (await confirmAction('Excluir esta atividade?', `“${task.title}” será excluída permanentemente do banco local. Esta ação não pode ser desfeita. Um backup anterior poderá recuperá-la.`)) await commit(() => database.remove(task.id), 'Atividade excluída permanentemente.');
+    if (await confirmAction('Excluir esta atividade?', `“${task.title}” será excluída permanentemente ${cloudState().mode === 'cloud' ? 'da sua conta na nuvem, em todos os aparelhos' : 'do banco local'}. Esta ação não pode ser desfeita. Um backup anterior poderá recuperá-la.`)) await commit(() => database.remove(task.id, task._cloudRevision), 'Atividade excluída permanentemente.');
     return;
   }
   if (action === 'restore') {
@@ -303,9 +338,9 @@ document.addEventListener('change', async event => {
       let data;
       try { data = JSON.parse((await file.text()).replace(/^\uFEFF/, '')); } catch { throw new Error('Este arquivo não é um JSON válido. Nenhum dado foi alterado.'); }
       const imported = validateBackup(data);
-      if (await confirmAction('Substituir todos os dados?', `O backup contém ${imported.tasks.length} atividade(s). As ${tasks.length} atividade(s) atuais e suas preferências serão substituídas. Faça uma exportação antes de continuar.`, 'Substituir e restaurar')) {
+      if (await confirmAction('Substituir todos os dados?', `O backup contém ${imported.tasks.length} atividade(s). As ${tasks.length} atividade(s) ${cloudState().mode === 'cloud' ? 'da sua conta na nuvem serão substituídas em todos os aparelhos' : 'atuais e suas preferências serão substituídas'}. Faça uma exportação antes de continuar.`, 'Substituir e restaurar')) {
         const success = await commit(() => database.replace(imported.tasks, imported.settings), 'Backup restaurado. Identificadores, datas e histórico preservados.');
-        if (success) { settings = imported.settings; applyTheme(); render(); }
+        if (success) { if (cloudState().mode !== 'cloud') settings = imported.settings; applyTheme(); render(); }
       }
     } catch (error) { notify(error.message, true); }
     finally { element.value = ''; }
@@ -320,22 +355,28 @@ async function changeTheme(theme) {
   channel?.postMessage('updated');
 }
 window.addEventListener('hashchange', () => {
+  if (new URLSearchParams(location.hash.slice(1)).has('access_token')) {
+    cloudInitialized = false; ready = false; tasks = [];
+    initialize();
+    return;
+  }
   const next = getPage();
   // navigate() sets filters before changing the hash; ordinary links start fresh.
   if (!preserveNavigationFilters) filters = {};
   preserveNavigationFilters = false;
   page = next;
   limit = 50;
+  if (!ready && page !== 'conta') { initialize(); return; }
   render();
   window.scrollTo({ top: 0 });
   $('#main').focus({ preventScroll: true });
 });
-async function refresh() {
-  if (!ready || busy) return;
+async function refresh(silent = true) {
+  if (!ready || busy || cloudTransition || document.querySelector('dialog[open]')) return;
   try { [tasks, settings] = await Promise.all([database.all(), database.settings()]); applyTheme(); render(); }
-  catch (error) { notify(`Não foi possível reler o banco local: ${error.message}`, true); }
+  catch (error) { updateCloudChrome(); if (!silent || cloudState().mode !== 'cloud') notify(`Não foi possível atualizar a lista: ${error.message}`, true); }
 }
-channel?.addEventListener('message', refresh);
+channel?.addEventListener('message', () => refresh());
 document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { if (!settings.theme || settings.theme === 'system') applyTheme(); });
 setInterval(() => { if (ready && !document.querySelector('dialog[open]')) render(); }, 60000);
@@ -343,15 +384,72 @@ setInterval(() => { if (ready && !document.querySelector('dialog[open]')) render
 async function initialize() {
   try {
     await openDatabase();
+    if (!cloudInitialized) { await initializeCloud(); cloudInitialized = true; page = getPage(); }
+    useCloudDatabase(cloudState().mode === 'cloud' ? cloudDatabase : null);
+    localCount = (await localDatabase.all()).length;
     [tasks, settings] = await Promise.all([database.all(), database.settings()]);
     storagePersisted = await navigator.storage?.persisted?.().catch(() => false) || false;
     ready = true;
     applyTheme();
     render();
   } catch (error) {
-    $('#save-status').textContent = 'Banco local indisponível';
-    $('#main').innerHTML = `<div class="notice warning" role="alert">${icon('alert')}<div><h1>Não foi possível abrir seus dados</h1><p>${html(error.message)}</p><p>Verifique se o navegador permite armazenar dados neste site. Não limpe o armazenamento para tentar corrigir o problema sem antes preservar um backup.</p><button class="button primary" data-action="retry">Tentar novamente</button></div></div>`;
+    ready = false; tasks = [];
+    $('#save-status').textContent = cloudState().mode === 'cloud' ? 'Nuvem indisponível' : 'Banco local indisponível';
+    $('#main').innerHTML = `<div class="notice warning" role="alert">${icon('alert')}<div><h1>Não foi possível abrir seus dados</h1><p>${html(error.message)}</p><p>${cloudState().mode === 'cloud' ? 'A nuvem precisa de conexão e de uma sessão válida. A lista local não substitui os dados da sua conta. Você pode entrar novamente em Conta e nuvem.' : 'Verifique se o navegador permite armazenar dados neste site. Não limpe o armazenamento para tentar corrigir o problema sem antes preservar um backup.'}</p><button class="button primary" data-action="retry">Tentar novamente</button><a class="button secondary" href="#conta">Conta e nuvem</a></div></div>`;
+    updateCloudChrome();
   }
 }
+
+function updateCloudChrome() {
+  const state = cloudState();
+  document.body.dataset.storage = state.mode;
+  $('#cloud-account-link').textContent = state.mode === 'cloud' ? state.email || 'Entrar novamente' : 'Entrar na nuvem';
+  const banner = $('#storage-banner');
+  banner.hidden = state.mode !== 'cloud' || state.status === 'synced';
+  banner.textContent = state.status === 'login-required' ? 'Sua sessão terminou. Entre novamente em Conta e nuvem.' : 'A sincronização com a nuvem precisa ser confirmada. Verifique a conexão e use Sincronizar agora.';
+  const privacy = $('.privacy-card');
+  privacy.querySelector('strong').textContent = state.mode === 'cloud' ? 'Seu trabalho, na sua conta.' : 'Seu trabalho, no seu navegador.';
+  privacy.querySelector('p').textContent = state.mode === 'cloud' ? 'Acesso em outros aparelhos com a mesma conta. Mantenha backups.' : 'Dados locais. Conecte sua conta para sincronizar entre aparelhos.';
+  const label = $('#connection-status span:last-child');
+  label.textContent = state.mode === 'cloud' ? (state.status === 'synced' ? 'Nuvem sincronizada' : 'Nuvem pendente') : navigator.onLine ? 'Dados neste navegador' : 'Sem conexão';
+  $('#connection-status').title = state.mode === 'cloud' ? 'As gravações são confirmadas pelo banco da sua conta.' : 'Os registros ficam neste navegador.';
+}
+subscribeCloud(() => {
+  updateCloudChrome();
+  if (cloudState().mode === 'cloud' && !cloudState().authenticated) {
+    tasks = []; ready = false;
+    document.querySelectorAll('dialog[open]').forEach(dialog => dialog.close());
+    $('#main').innerHTML = '<div class="notice warning" role="alert"><div><h1>Entre novamente na sua conta</h1><p>A sessão de acesso terminou. Seus dados continuam na nuvem.</p><a class="button primary" href="#conta">Abrir Conta e nuvem</a></div></div>';
+  }
+});
+
+document.addEventListener('submit', async event => {
+  const form = event.target.closest('[data-auth-form]');
+  if (!form) return;
+  event.preventDefault();
+  if (cloudTransition || busy) return;
+  const values = Object.fromEntries(new FormData(form));
+  const button = form.querySelector('button[type="submit"]');
+  const errorElement = form.querySelector('.auth-error');
+  errorElement.hidden = true;
+  button.disabled = true; cloudTransition = true;
+  try {
+    const action = form.dataset.authForm;
+    if (action === 'recover') { await sendRecovery(values.email); notify('Se o email estiver cadastrado, você receberá um link de recuperação.'); return; }
+    if (action === 'password') { await updatePassword(values.password); form.reset(); notify('Senha atualizada.'); render(); return; }
+    let connected = true;
+    if (action === 'signup') connected = await signUp(values.email, values.password);
+    else await signIn(values.email, values.password);
+    form.reset();
+    if (!connected) { notify('Confira seu email para confirmar o cadastro. Depois, entre na conta.'); return; }
+    ready = false; tasks = []; lastSaved = null;
+    await initialize();
+    page = 'conta'; if (location.hash !== '#conta') location.hash = 'conta';
+    render();
+    if (ready) notify('Conta conectada. As atividades exibidas agora são da sua nuvem.');
+  } catch (error) { errorElement.textContent = error.message; errorElement.hidden = false; }
+  finally { button.disabled = false; cloudTransition = false; }
+});
+setInterval(() => { if (cloudState().mode === 'cloud' && navigator.onLine && !document.hidden) refresh(); }, 30000);
 initialize();
 initializeWeb({ notify, onChange: () => { if (page === 'configuracoes') render(); } });

@@ -15,8 +15,9 @@ export const webState = () => ({ ...state });
 function publish() {
   const status = document.getElementById('connection-status');
   status.classList.toggle('is-offline', !state.online);
-  status.querySelector('span:last-child').textContent = state.online ? 'Dados neste navegador' : 'Sem conexão';
-  status.title = state.offlineReady ? 'Aplicativo disponível offline neste navegador.' : 'Seus registros ficam salvos neste navegador.';
+  const cloud = document.body.dataset.storage === 'cloud';
+  status.querySelector('span:last-child').textContent = cloud ? (state.online ? 'Conta na nuvem' : 'Nuvem sem conexão') : state.online ? 'Dados neste navegador' : 'Sem conexão';
+  status.title = cloud ? 'A nuvem precisa de conexão para confirmar leituras e gravações.' : state.offlineReady ? 'Aplicativo disponível offline neste navegador.' : 'Seus registros ficam salvos neste navegador.';
   document.getElementById('install-app').hidden = !state.installable || state.installed;
   document.getElementById('web-update').hidden = !state.updateAvailable;
   onChange();

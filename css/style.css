@@ -1,4 +1,72 @@
 @charset "UTF-8";
+.account-form {
+  display: grid;
+  gap: 16px;
+  width: 100%;
+  margin-top: 20px;
+}
+.account-form label {
+  font-size: 12px;
+  color: var(--muted);
+}
+.account-form input {
+  display: block;
+  margin-top: 6px;
+}
+.account-form .button {
+  justify-self: start;
+}
+.recovery-details {
+  font-size: 12px;
+  margin-top: 20px;
+  width: 100%;
+}
+.recovery-details summary {
+  cursor: pointer;
+  color: var(--primary);
+}
+.account-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  align-items: center;
+  padding: 24px;
+  margin-bottom: 24px;
+}
+.account-summary .feature-icon {
+  margin: 0;
+}
+.account-summary div:nth-child(2) {
+  flex: 1;
+  min-width: 150px;
+  overflow-wrap: anywhere;
+}
+.account-summary p {
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 5px;
+}
+.storage-banner {
+  margin: 0 38px 20px;
+  padding: 13px 18px;
+  background: var(--surface);
+  border: 1px solid var(--red);
+  border-radius: 8px;
+  color: var(--red);
+  font-size: 12px;
+}
+.cloud-account-link {
+  margin-left: 10px;
+  color: var(--primary);
+  font-weight: 600;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+@media (max-width: 700px) {
+  .storage-banner { margin-inline: 18px; }
+  .cloud-account-link { max-width: 120px; }
+}
 .web-update {
   display: flex;
   align-items: center;

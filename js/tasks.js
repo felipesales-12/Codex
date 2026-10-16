@@ -21,7 +21,7 @@ export function duration(task) {
 
 export function createTask(values, original = null) {
   const now = new Date().toISOString();
-  return {
+  const task = {
     id: original?.id || uniqueId(),
     title: values.title.trim(), requester: values.requester.trim(),
     priority: values.priority, description: values.description.trim(),
@@ -29,11 +29,13 @@ export function createTask(values, original = null) {
     status: values.status, dueDate: values.dueDate || '',
     createdAt: original?.createdAt || now, updatedAt: now,
     completedAt: values.status === 'completed' ? (original?.completedAt || now) : null,
+    ...(original?._cloudRevision ? { _cloudRevision: original._cloudRevision } : {}),
   };
+  return task;
 }
 
 // randomUUID is restricted to HTTPS/localhost; getRandomValues also works on LAN HTTP.
-function uniqueId() {
+export function uniqueId() {
   if (typeof crypto.randomUUID === 'function') return crypto.randomUUID();
   const bytes = crypto.getRandomValues(new Uint8Array(16));
   bytes[6] = (bytes[6] & 0x0f) | 0x40;

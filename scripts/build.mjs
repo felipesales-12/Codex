@@ -1,18 +1,22 @@
-import { readFile, writeFile, mkdir, rm, readdir, copyFile } from 'node:fs/promises';
+import { readFile, writeFile, mkdir, rm, readdir } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
+import { validateCloudConfig } from '../js/cloud-config.js';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const output = join(root, 'dist');
 export const assets = [
   'index.html', 'favicon.svg', 'manifest.webmanifest', 'css/style.css',
-  'js/app.js', 'js/database.js', 'js/tasks.js', 'js/backup.js', 'js/icons.js', 'js/web.js',
+  'js/app.js', 'js/database.js', 'js/tasks.js', 'js/backup.js', 'js/icons.js', 'js/web.js', 'js/cloud-config.js', 'js/cloud.js', 'js/account.js',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable.png',
 ];
 
 export async function build() {
   const files = await Promise.all(assets.map(path => readFile(join(root, path))));
+  const cloud = validateCloudConfig({ url: process.env.SUPABASE_URL, publishableKey: process.env.SUPABASE_PUBLISHABLE_KEY });
+  const configIndex = assets.indexOf('js/cloud-config.js');
+  files[configIndex] = Buffer.from(files[configIndex].toString().replace("export const cloudConfig = Object.freeze({ url: '', publishableKey: '' });", `export const cloudConfig = Object.freeze(${JSON.stringify({ url: cloud.url, publishableKey: cloud.publishableKey })});`));
   const worker = await readFile(join(root, 'sw.js'), 'utf8');
   const hash = createHash('sha256');
   files.forEach((data, index) => { hash.update(assets[index]); hash.update(data); });
@@ -28,7 +32,7 @@ export async function build() {
     await mkdir(join(output, path, '..'), { recursive: true });
     if (path === 'index.html') {
       await writeFile(join(output, path), files[index].toString().replace('name="compasso-release" content="development"', `name="compasso-release" content="${release}"`));
-    } else await copyFile(join(root, path), join(output, path));
+    } else await writeFile(join(output, path), files[index]);
   }
   await writeFile(join(output, 'sw.js'), worker.replace('__BUILD_ID__', release).replace('const ASSETS = []; // __ASSETS__', `const ASSETS = ${JSON.stringify(['./', ...assets])};`));
   await writeFile(join(output, '.nojekyll'), '');

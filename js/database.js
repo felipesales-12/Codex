@@ -39,7 +39,7 @@ async function transaction(stores, mode, operation) {
   });
 }
 
-export const database = {
+export const localDatabase = {
   all: () => transaction(['tasks'], 'readonly', tx => {
     const request = tx.objectStore('tasks').getAll();
     return () => request.result;
@@ -62,4 +62,18 @@ export const database = {
     preferences.clear();
     for (const [key, value] of Object.entries(settings)) preferences.put(value, key);
   }),
+};
+
+let cloudAdapter = null;
+export function useCloudDatabase(adapter) { cloudAdapter = adapter; }
+
+// Preferences stay on this device; task operations use exactly one destination.
+export const database = {
+  all: (...args) => (cloudAdapter || localDatabase).all(...args),
+  add: (...args) => (cloudAdapter || localDatabase).add(...args),
+  put: (...args) => (cloudAdapter || localDatabase).put(...args),
+  remove: (...args) => (cloudAdapter || localDatabase).remove(...args),
+  replace: (tasks, settings) => cloudAdapter ? cloudAdapter.replace(tasks) : localDatabase.replace(tasks, settings),
+  settings: () => localDatabase.settings(),
+  setSetting: (key, value) => localDatabase.setSetting(key, value),
 };

@@ -1,6 +1,8 @@
 # Compasso — Gerenciador local de atividades
 
-Aplicação em português para organizar atividades, acompanhar urgências e manter um histórico de conclusões. Feita com HTML, CSS e JavaScript nativo, com IndexedDB para armazenar os registros no navegador. Não utiliza contas, APIs, fontes remotas, CDN ou serviços na nuvem. A instalação começa vazia, sem atividades de exemplo.
+Aplicação em português para organizar atividades, acompanhar urgências e manter um histórico de conclusões. Feita com HTML, CSS e JavaScript nativo. O modo local usa IndexedDB; o novo modo nuvem conecta Supabase Auth e PostgreSQL para acesso à mesma conta em outros aparelhos. Não utiliza fontes remotas ou CDN. A instalação começa vazia, sem atividades de exemplo.
+
+**Para ativar o armazenamento na nuvem, siga [NUVEM.md](NUVEM.md).** É necessário criar/configurar um projeto Supabase, executar o SQL e conectar a configuração pública ao build. Até concluir esses passos, as atividades continuam somente no navegador. As instruções de uso sem internet abaixo descrevem o modo local; gravações na nuvem precisam de conexão.
 
 ## Abrir pela internet — GitHub Pages
 
@@ -8,7 +10,7 @@ O frontend também está preparado para publicação no GitHub Pages. O workflow
 
 No repositório `felipesales-12/Codex`, configure **Settings → Pages → Build and deployment → Source → GitHub Actions**. Depois de um push em `main`, acompanhe o workflow **Publicar Compasso no GitHub Pages** na aba **Actions**. Se a opção só for ativada após o push inicial, use **Run workflow** para executar a publicação novamente. O endereço confirmado deve ser obtido do resultado da implantação ou da página de configuração; a presença do workflow no repositório não prova que o site foi publicado.
 
-O site HTTPS não requer Python ou instalação no computador do usuário. Após a primeira visita e a preparação do cache, o build pode abrir offline e ser instalado como aplicativo quando o navegador oferecer essa opção. Os dados continuam no IndexedDB por navegador/origem. Para levar atividades do endereço local ao site, exporte e importe um backup JSON. Não envie backups ou dados pessoais ao repositório. Esta publicação não cria sincronização entre aparelhos.
+O site HTTPS não requer Python ou instalação no computador do usuário. Após a primeira visita e a preparação do cache, o build pode abrir a interface offline e ser instalado como aplicativo quando o navegador oferecer essa opção. No modo local, os dados continuam no IndexedDB por navegador/origem. Com a nuvem configurada, entre na mesma conta para consultar e salvar no banco remoto; esse modo precisa de internet. Para migrar atividades antigas, siga [NUVEM.md](NUVEM.md). Não envie backups ou dados pessoais ao repositório.
 
 ## Acessar como site na rede local
 
@@ -97,6 +99,11 @@ index.html                 Estrutura, navegação e modais acessíveis
 favicon.svg                Ícone local
 css/style.css              Layout responsivo, temas e estilos
 js/database.js             IndexedDB, transações e preferências
+js/cloud-config.js         Configuração pública e validação de chaves
+js/cloud.js                Login, sessões e operações do banco remoto
+js/account.js              Tela de conta e migração
+supabase/schema.sql        Banco e regras de isolamento por usuário
+NUVEM.md                   Ativação do serviço e política de backups
 js/tasks.js                Modelo, filtros, ordenação e indicadores
 js/backup.js               Validação JSON, exportação e CSV
 js/icons.js                Ícones SVG locais

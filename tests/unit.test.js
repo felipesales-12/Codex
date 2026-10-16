@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createTask, selectTasks, getMetrics, localDate, duration } from '../js/tasks.js';
 import { backupJSON, validateBackup, tasksCSV } from '../js/backup.js';
+import { validateCloudConfig } from '../js/cloud-config.js';
 
 const make = (changes = {}) => createTask({ title: 'Inspeção hidráulica', requester: 'José', priority: 'high', description: 'Revisar pressão\nTrocar vedação', location: 'Produção', notes: 'Usar EPI', status: 'pending', dueDate: '', ...changes });
 
@@ -68,4 +69,21 @@ test('CSV preserva acentos e texto multilinha e neutraliza fórmulas de planilha
   assert.ok(csv.includes('Urgência'));
   assert.ok(csv.includes('"\'=1+1"'));
   assert.ok(csv.includes('"Texto ""com aspas"";\nsegunda linha"'));
+});
+
+test('configuração cloud aceita somente URL de projeto e chave pública', () => {
+  assert.equal(validateCloudConfig({}).configured, false);
+  assert.equal(validateCloudConfig({ url: 'https://projeto.supabase.co/', publishableKey: 'sb_publishable_test' }).url, 'https://projeto.supabase.co');
+  const jwt = role => `test.${Buffer.from(JSON.stringify({ role })).toString('base64url')}.signature`;
+  assert.equal(validateCloudConfig({ url: 'https://projeto.supabase.co', publishableKey: jwt('anon') }).configured, true);
+  for (const publishableKey of ['sb_secret_very_private', jwt('service_role'), 'invalid', '']) assert.throws(() => validateCloudConfig({ url: 'https://projeto.supabase.co', publishableKey }));
+  for (const url of ['http://projeto.supabase.co', 'https://projeto.supabase.co.evil.test', 'https://projeto.supabase.co/path']) assert.throws(() => validateCloudConfig({ url, publishableKey: 'sb_publishable_test' }));
+});
+
+test('revisões internas da nuvem não entram no backup JSON', () => {
+  const task = { ...make(), _cloudRevision: 9 };
+  const json = backupJSON([task], {});
+  assert.ok(!json.includes('_cloudRevision'));
+  assert.equal(validateBackup(JSON.parse(json)).tasks[0].id, task.id);
+  assert.equal(createTask({ ...task, title: 'Edição' }, task)._cloudRevision, 9);
 });

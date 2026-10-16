@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "Gerenciador local de atividades com IndexedDB e sem dependências de execução externas.",
+  "description": "Gerenciador de atividades com IndexedDB local e sincronização opcional via Supabase.",
   "scripts": {
     "start": "python3 server.py --no-browser",
     "start:lan": "python3 server.py --network --no-browser",
@@ -11,7 +11,8 @@
     "preview": "node scripts/preview.mjs",
     "test": "node --test tests/unit.test.js",
     "test:e2e": "playwright test",
-    "test:web": "playwright test --config playwright.web.config.js"
+    "test:web": "playwright test --config playwright.web.config.js",
+    "test:database": "node scripts/test-database.mjs"
   },
   "devDependencies": {
     "@playwright/test": "1.61.1"

@@ -2,7 +2,7 @@
 
 O modo nuvem usa **Supabase Auth + PostgreSQL**. O GitHub Pages continua hospedando apenas os arquivos do site. Não há dados de atividades em commits, no workflow ou nos arquivos publicados. O modo local existente continua disponível.
 
-**Estado desta entrega:** a integração, a tela de conta e o script do banco foram implementados e testados localmente. Um projeto Supabase real ainda precisa ser criado/configurado. Sem essa configuração, o site informa que a nuvem não está ativada e mantém o armazenamento local. Nenhum registro real foi migrado automaticamente.
+**Estado desta entrega:** o projeto `https://pzvcsiowxewfzilczsgy.supabase.co` e sua chave publicável foram informados pelo usuário e configurados no frontend. Ainda é necessário confirmar a execução do SQL, o login real e a gravação no banco hospedado. A rede deste ambiente bloqueou o acesso direto ao projeto. Nenhum registro real do navegador foi migrado automaticamente.
 
 ## 1. Criar o projeto
 
@@ -30,7 +30,7 @@ Verifique a entrega dos emails de confirmação e de recuperação. O envio padr
 
 ## 4. Conectar o site publicado
 
-No repositório GitHub, abra **Settings → Secrets and variables → Actions → Variables** e crie duas **Repository variables**:
+A configuração pública do projeto informado já está em `js/cloud-config.js`; o build a utiliza por padrão, sem exigir novas variáveis no GitHub. A chave publicável é própria para distribuição no frontend e não dá acesso administrativo ao banco. Para substituir essa configuração em outro projeto ou rotacionar a chave pelo GitHub, abra **Settings → Secrets and variables → Actions → Variables** e configure as duas **Repository variables** juntas:
 
 | Nome | Valor |
 | --- | --- |
@@ -39,11 +39,11 @@ No repositório GitHub, abra **Settings → Secrets and variables → Actions �
 
 São configurações públicas do cliente e aparecem no JavaScript publicado. A proteção dos registros é feita pelo login e pelas regras do banco, não pelo sigilo da chave publicável. Não use a senha do banco nem chaves com privilégios administrativos nesses campos.
 
-Execute novamente **Actions → Publicar Compasso no GitHub Pages → Run workflow**. O workflow lê essas variáveis no build e publica a configuração. Atualizações do aplicativo já instalado podem exibir **Atualizar agora**; finalize edições abertas antes de atualizar.
+Execute novamente **Actions → Publicar Compasso no GitHub Pages → Run workflow**. O workflow usa as duas variáveis, quando preenchidas; sem elas, publica a configuração pública já versionada. Atualizações do aplicativo já instalado podem exibir **Atualizar agora**; finalize edições abertas antes de atualizar.
 
 As variáveis do ambiente de desenvolvimento do Codex são separadas das Repository variables do GitHub. Configurar apenas o ambiente do Codex não configura automaticamente o build executado nos servidores do GitHub.
 
-Para um build local de desenvolvimento, forneça as mesmas duas variáveis ao processo `npm run build`. O script não lê um arquivo `.env` automaticamente. Se ambas estiverem ausentes, gera a versão local sem nuvem. Se apenas uma estiver preenchida ou houver uma chave proibida, interrompe o build para evitar uma conexão inválida.
+Para um build local de desenvolvimento, forneça as mesmas duas variáveis ao processo `npm run build`. O script não lê um arquivo `.env` automaticamente. Se ambas estiverem ausentes, usa a configuração pública de `js/cloud-config.js`. Se tanto as variáveis quanto a configuração versionada estiverem vazias, gera a versão local sem nuvem. Se somente uma variável estiver preenchida ou houver uma chave proibida, interrompe o build para evitar uma conexão inválida.
 
 ## 5. Entrar e migrar as atividades existentes
 

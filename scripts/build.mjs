@@ -2,7 +2,7 @@ import { readFile, writeFile, mkdir, rm, readdir } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
-import { validateCloudConfig } from '../js/cloud-config.js';
+import { cloudConfig, validateCloudConfig } from '../js/cloud-config.js';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const output = join(root, 'dist');
@@ -14,9 +14,12 @@ export const assets = [
 
 export async function build() {
   const files = await Promise.all(assets.map(path => readFile(join(root, path))));
-  const cloud = validateCloudConfig({ url: process.env.SUPABASE_URL, publishableKey: process.env.SUPABASE_PUBLISHABLE_KEY });
+  const override = Boolean(process.env.SUPABASE_URL?.trim() || process.env.SUPABASE_PUBLISHABLE_KEY?.trim());
+  const cloud = validateCloudConfig(override ? { url: process.env.SUPABASE_URL, publishableKey: process.env.SUPABASE_PUBLISHABLE_KEY } : cloudConfig);
   const configIndex = assets.indexOf('js/cloud-config.js');
-  files[configIndex] = Buffer.from(files[configIndex].toString().replace("export const cloudConfig = Object.freeze({ url: '', publishableKey: '' });", `export const cloudConfig = Object.freeze(${JSON.stringify({ url: cloud.url, publishableKey: cloud.publishableKey })});`));
+  const declaration = /export const cloudConfig = Object\.freeze\(\{[^\n]*\}\);/;
+  if (!declaration.test(files[configIndex].toString())) throw new Error('Declaração da configuração pública não encontrada. O build foi interrompido.');
+  files[configIndex] = Buffer.from(files[configIndex].toString().replace(declaration, `export const cloudConfig = Object.freeze(${JSON.stringify({ url: cloud.url, publishableKey: cloud.publishableKey })});`));
   const worker = await readFile(join(root, 'sw.js'), 'utf8');
   const hash = createHash('sha256');
   files.forEach((data, index) => { hash.update(assets[index]); hash.update(data); });

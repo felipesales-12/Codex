@@ -1,6 +1,6 @@
-// Public configuration only. The build fills this from GitHub repository variables.
+// Public client configuration. GitHub repository variables can override both fields.
 // Never put a secret key or a service_role key in frontend files.
-export const cloudConfig = Object.freeze({ url: '', publishableKey: '' });
+export const cloudConfig = Object.freeze({ url: 'https://pzvcsiowxewfzilczsgy.supabase.co', publishableKey: 'sb_publishable_BBkdgPvZIox-GA4FdHSSEw_1YJBHZ5m' });
 
 export function validateCloudConfig(value) {
   const url = String(value?.url || '').trim().replace(/\/+$/, '');

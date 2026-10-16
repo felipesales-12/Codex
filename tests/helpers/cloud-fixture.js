@@ -28,11 +28,14 @@ export function backendFixture() {
   };
   return backend;
 }
-export async function connectFixture(context, backend) {
+export async function configureCloudFixture(context, value) {
   await context.route('**/js/cloud-config.js', route => route.fulfill({
     contentType: 'text/javascript',
-    body: configSource.replace("export const cloudConfig = Object.freeze({ url: '', publishableKey: '' });", `export const cloudConfig = Object.freeze(${JSON.stringify({ url: project, publishableKey: 'sb_publishable_test_key' })});`),
+    body: configSource.replace(/export const cloudConfig = Object\.freeze\(\{[^\n]*\}\);/, `export const cloudConfig = Object.freeze(${JSON.stringify(value)});`),
   }));
+}
+export async function connectFixture(context, backend) {
+  await configureCloudFixture(context, { url: project, publishableKey: 'sb_publishable_test_key' });
   await context.route(`${project}/**`, async route => {
     const request = route.request(), url = new URL(request.url());
     const data = request.postDataJSON() || {};

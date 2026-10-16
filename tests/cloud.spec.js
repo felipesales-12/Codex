@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
-import { backendFixture, connectFixture } from './helpers/cloud-fixture.js';
+import { backendFixture, connectFixture, configureCloudFixture } from './helpers/cloud-fixture.js';
 
 async function add(page, title) {
   await page.getByRole('button', { name: 'Nova atividade', exact: true }).first().click();
@@ -28,7 +28,8 @@ async function dashboard(page) {
   await expect(page.getByRole('heading', { name: 'Seu dia, sob controle.' })).toBeVisible();
 }
 
-test('sem configuração, informa que os registros ainda são locais', async ({ page }) => {
+test('sem configuração, informa que os registros ainda são locais', async ({ page, context }) => {
+  await configureCloudFixture(context, { url: '', publishableKey: '' });
   await page.goto('/#conta');
   await expect(page.getByText('A conexão com a nuvem ainda não foi ativada.')).toBeVisible();
   await expect(page.locator('[data-auth-form]')).toHaveCount(0);

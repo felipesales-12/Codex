@@ -24,10 +24,17 @@ Também aceita a antiga chave pública JWT com papel `anon`. Nunca use `service_
 ## Configurar Supabase
 
 1. Crie um projeto Supabase ou escolha o projeto que será usado pela fábrica.
-2. No SQL Editor, execute **primeiro** todo o arquivo [supabase/schema.sql](supabase/schema.sql), depois [supabase/inventory.sql](supabase/inventory.sql). Os scripts podem ser reaplicados sem apagar dados. O primeiro mantém a validação e a compatibilidade do módulo antigo.
-3. Em Authentication, habilite o provedor Email. Desabilite inscrições públicas: os usuários devem ser cadastrados pelo administrador. Configure a URL HTTPS publicada em Site URL e Redirect URLs. Para desenvolvimento, inclua `http://127.0.0.1:4173`.
-4. Em Authentication → Users, crie cada usuário com e-mail/senha e e-mail confirmado. Copie seu UUID. Para recuperação de senha, o administrador deve redefini-la por um fluxo administrativo seguro; a aplicação não expõe uma chave administrativa.
-5. Autorize cada usuário no SQL Editor:
+2. No SQL Editor, execute **nesta ordem** todo o conteúdo de [supabase/schema.sql](supabase/schema.sql), [supabase/inventory.sql](supabase/inventory.sql) e [supabase/registration.sql](supabase/registration.sql). Os scripts podem ser reaplicados sem apagar dados. O primeiro mantém a validação e a compatibilidade do módulo antigo.
+3. Em Authentication, habilite o provedor Email e a criação de contas. **Mantenha a confirmação de e-mail habilitada.** Configure a URL HTTPS publicada em Site URL e Redirect URLs, incluindo a barra final (por exemplo, `https://felipesales-12.github.io/Codex/`). Para desenvolvimento, inclua `http://127.0.0.1:4173/`.
+4. Autorize previamente cada endereço no SQL Editor. Somente e-mails nesta lista, após confirmação, recebem acesso ao estoque:
+
+```sql
+insert into public.inventory_approved_emails(email, name)
+values ('operador@empresa.com', 'Nome do operador')
+on conflict(email) do update set name = excluded.name;
+```
+
+5. O operador abre **Primeiro acesso · Criar minha conta**, define sua senha, confirma o e-mail recebido e volta ao site para entrar. A lista de autorização é privada e não pode ser alterada pelos operadores. Contas já existentes também podem ser autorizadas pelo UUID em Authentication → Users:
 
 ```sql
 insert into public.inventory_members(user_id, name)
@@ -36,9 +43,9 @@ on conflict(user_id) do update set name = excluded.name;
 ```
 
 6. A migração adiciona `public.inventory_state` à publicação `supabase_realtime`, quando ela existe. Confira em Database → Replication/Publications se a tabela está habilitada. Não é necessário publicar as tabelas de estoque inteiro. Em instalações próprias, crie/configure a publicação antes de reaplicar a migração.
-7. Copie Project URL e a chave pública de API para `.env`, gere o build e entre com o usuário criado.
+7. Copie Project URL e a chave pública de API para `.env`, gere o build e entre com o usuário criado. Para recuperação de senha, o administrador deve usar um fluxo administrativo seguro; a aplicação não expõe uma chave administrativa.
 
-Para revogar acesso, remova o usuário de `inventory_members` (não exclua seu histórico). O nome registrado em cada movimentação é obtido da associação mantida pelo administrador. Todos os membros autorizados trabalham no **mesmo estoque da fábrica**. A solução não implementa múltiplas empresas nem níveis de permissão entre operadores.
+Para revogar acesso, remova o endereço de `inventory_approved_emails` e o usuário de `inventory_members` (não exclua seu histórico). O nome registrado em cada movimentação é obtido da associação mantida pelo administrador. Todos os membros autorizados trabalham no **mesmo estoque da fábrica**. A solução não implementa múltiplas empresas nem níveis de permissão entre operadores.
 
 ## Funcionalidades
 
@@ -79,7 +86,7 @@ Este repositório já inclui no workflow a URL e a chave **pública** do projeto
 O workflow em `.github/workflows/pages.yml` valida código, banco e navegador antes de publicar `dist/`.
 
 1. Em Settings → Pages, selecione **GitHub Actions**.
-2. Em Settings → Secrets and variables → Actions → **Variables**, crie `SUPABASE_URL` e `SUPABASE_PUBLISHABLE_KEY`.
+2. Para usar outro projeto, em Settings → Secrets and variables → Actions → **Variables**, crie `SUPABASE_URL` e `SUPABASE_PUBLISHABLE_KEY`. O projeto desta implantação já está configurado no workflow.
 3. Configure o banco, membros e URL de autenticação conforme acima.
 4. Integre a branch à `main` ou execute o workflow manualmente.
 
@@ -112,6 +119,7 @@ js/backup.js                  validação e exportações originais
 js/database.js                leitura do IndexedDB para migração
 supabase/schema.sql           compatibilidade/validação de atividades
 supabase/inventory.sql        tabelas, RLS, RPCs, auditoria e publicação
+supabase/registration.sql     primeiro acesso por e-mail autorizado e confirmado
 scripts/build.mjs             build e variáveis .env
 scripts/preview.mjs           servidor local restrito ao dist/
 scripts/test-inventory.mjs     testes reais do novo banco
@@ -128,4 +136,3 @@ Os adaptadores `js/cloud.js`, `js/firebase-cloud.js`, `js/supabase-cloud.js`, `j
 - [Autenticação por senha](https://supabase.com/docs/reference/javascript/auth-signinwithpassword)
 - [Row Level Security](https://supabase.com/docs/guides/database/postgres/row-level-security)
 - [Postgres Changes / Realtime](https://supabase.com/docs/guides/realtime/postgres-changes)
-

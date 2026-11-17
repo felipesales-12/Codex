@@ -122,6 +122,11 @@ export async function fixture(context) {
           contentType: "application/json",
           body: JSON.stringify(data),
         });
+      if (path.endsWith("/signup"))
+        return json({
+          ...user,
+          identities: [{ id: user.id, provider: "email" }],
+        });
       if (path.endsWith("/token")) return json(token);
       if (path.endsWith("/user")) return json(user);
       if (path.endsWith("/logout")) return json({});

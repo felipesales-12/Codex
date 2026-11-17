@@ -21,3 +21,11 @@ Evolução da marca Compasso: navegação escura grafite, fundo cinza claro, sup
 ## Preservação
 
 As funções puras de `js/tasks.js` e `js/backup.js` são reutilizadas com os testes originais. Os adaptadores antigos permanecem no histórico/código para referência e migração, sem integrar o novo bundle. Backups antigos são importados por operação transacional. A restauração de atividades continua disponível com confirmação e revisão global; o histórico de auditoria registra o estado anterior. Estoque e auditoria não são sobrescritos por backups antigos.
+
+## Primeiro acesso e verificação da implantação
+
+O cadastro por senha exige confirmação de e-mail. Uma lista privada de endereços autorizados controla a inclusão automática em `inventory_members`; a criação de uma conta, sozinha, não libera acesso ao estoque. A aplicação não recebe nenhuma chave administrativa. Os testes verificam que cadastro sem confirmação e endereço fora da lista não recebem associação, e que operadores não podem ler ou editar a lista.
+
+Na implantação de 17/11/2026, o projeto Supabase foi reativado, as três migrações foram aplicadas, as 14 combinações foram verificadas e a publicação Realtime de `inventory_state` foi confirmada. A API anônima rejeitou consultas de estoque e a RPC de leitura com HTTP 401. O destino HTTPS do GitHub Pages foi aceito pelo fluxo de redirecionamento do Auth. A criação da conta e a confirmação do e-mail ficam a cargo do titular, que define sua própria senha.
+
+O advisor reporta [funções SECURITY DEFINER executáveis por autenticados](https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable). Isso é intencional nas RPCs: a associação é verificada dentro da função, o `search_path` é fixado e a escrita direta é revogada. O helper retorna apenas a associação da sessão. As [tabelas com RLS sem políticas](https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy) são privadas por projeto: registros internos de idempotência e lista de e-mails. Não devem ganhar políticas públicas apenas para silenciar o aviso.

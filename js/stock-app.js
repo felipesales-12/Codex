@@ -253,6 +253,30 @@ async function action(name, id) {
   const sheet = data?.sheets.find((r) => r.id === id),
     scrap = data?.scraps.find((r) => r.id === id),
     task = data?.tasks.find((r) => r.id === id);
+  if (name === "register") {
+    if (!configured)
+      return notify("Configure o Supabase antes do primeiro acesso.");
+    open(
+      "Criar meu acesso",
+      `<p>Use o e-mail autorizado pelo administrador. O acesso ao estoque será liberado após confirmar seu endereço.</p>${views.field("E-mail de acesso", "email", "", "email", 'required autocomplete="username"')}${views.field("Criar senha", "password", "", "password", 'required minlength="10" autocomplete="new-password"')}${views.field("Repetir senha", "confirm", "", "password", 'required minlength="10" autocomplete="new-password"')}`,
+      async (values) => {
+        if (values.password !== values.confirm)
+          throw new Error("As senhas precisam ser iguais.");
+        const { error } = await cloud.auth.signUp({
+          email: values.email.trim(),
+          password: values.password,
+          options: { emailRedirectTo: location.origin + location.pathname },
+        });
+        if (error)
+          throw new Error(
+            "Não foi possível cadastrar. Confira o endereço, use uma senha com pelo menos 10 caracteres e tente novamente.",
+          );
+        return "Confira a caixa de entrada, confirme seu e-mail e volte ao site para entrar. Se já possui conta, use sua senha atual.";
+      },
+      "Criar acesso e enviar confirmação",
+    );
+    return;
+  }
   if (name === "close") {
     close();
     return;
@@ -528,13 +552,14 @@ document.addEventListener("submit", async (event) => {
         );
     }
     if (form.getAttribute("id") === "operation-form") {
+      let message = "Operação concluída.";
       if (pendingRequest) {
         await apply(pendingRequest);
         pendingRequest = null;
-      } else await modalHandler(values);
+      } else message = (await modalHandler(values)) || message;
       busy = false;
       close();
-      notify("Operação concluída.");
+      notify(message);
       await refresh();
     }
   } catch (e) {

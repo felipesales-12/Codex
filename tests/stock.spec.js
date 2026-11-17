@@ -1,5 +1,35 @@
 import { test, expect } from "@playwright/test";
 import { fixture, login } from "./helpers/inventory-fixture.js";
+test("primeiro acesso exige confirmação de senha e orienta confirmação de e-mail", async ({
+  page,
+  context,
+}) => {
+  await fixture(context);
+  await page.goto("/Codex/");
+  await page
+    .getByRole("button", { name: "Primeiro acesso · Criar minha conta" })
+    .click();
+  await page.getByLabel("E-mail de acesso").fill("operador@fabrica.test");
+  await page
+    .getByLabel("Criar senha", { exact: true })
+    .fill("uma-senha-de-teste");
+  await page.getByLabel("Repetir senha").fill("outra-senha-de-teste");
+  await page
+    .getByRole("button", { name: "Criar acesso e enviar confirmação" })
+    .click();
+  await expect(page.getByRole("dialog").getByRole("alert")).toContainText(
+    "As senhas precisam ser iguais",
+  );
+  await page.getByLabel("Repetir senha").fill("uma-senha-de-teste");
+  await page
+    .getByRole("button", { name: "Criar acesso e enviar confirmação" })
+    .click();
+  await expect(page.getByRole("dialog")).not.toBeVisible();
+  await expect(page.locator("#toast")).toContainText("confirme seu e-mail");
+  await expect(
+    page.getByRole("heading", { name: "Bom ter você por aqui." }),
+  ).toBeVisible();
+});
 test("login obrigatório, painel, alerta e logout; responsividade sem rolagem lateral", async ({
   page,
   context,

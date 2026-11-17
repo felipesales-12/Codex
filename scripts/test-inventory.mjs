@@ -51,6 +51,8 @@ try {
     "supabase/schema.sql",
     "supabase/inventory.sql",
     "supabase/inventory.sql",
+    "supabase/registration.sql",
+    "supabase/registration.sql",
   ])
     await sql(await readFile(f, "utf8"));
   console.log(
@@ -70,6 +72,12 @@ try {
     );
   console.log(
     "PASS: duas conexões concorrentes disputam saldo sem deixá-lo negativo",
+  );
+  console.log(
+    (await sql(await readFile("tests/registration.sql", "utf8")))
+      .split("\n")
+      .filter((x) => x.includes("PASS:"))
+      .join("\n"),
   );
 } finally {
   await exec("docker", ["rm", "-f", name]).catch(() => {});

@@ -74,6 +74,8 @@ Antes de substituir a versão antiga, exporte um backup JSON em cada conta/naveg
 
 ## Publicar no GitHub Pages
 
+Este repositório já inclui no workflow a URL e a chave **pública** do projeto Supabase selecionado para a implantação. As Variables do GitHub Actions podem substituir esses valores. O arquivo local `.env` continua separado do Git e pode ser usado para desenvolvimento.
+
 O workflow em `.github/workflows/pages.yml` valida código, banco e navegador antes de publicar `dist/`.
 
 1. Em Settings → Pages, selecione **GitHub Actions**.
@@ -126,3 +128,4 @@ Os adaptadores `js/cloud.js`, `js/firebase-cloud.js`, `js/supabase-cloud.js`, `j
 - [Autenticação por senha](https://supabase.com/docs/reference/javascript/auth-signinwithpassword)
 - [Row Level Security](https://supabase.com/docs/guides/database/postgres/row-level-security)
 - [Postgres Changes / Realtime](https://supabase.com/docs/guides/realtime/postgres-changes)
+

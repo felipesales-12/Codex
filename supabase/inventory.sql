@@ -25,6 +25,8 @@ create table if not exists public.inventory_scraps (
 create table if not exists public.inventory_tasks (
   id text primary key check(length(id) between 1 and 100), payload jsonb not null, revision bigint not null default 1
 );
+create index if not exists inventory_scraps_catalog_idx on public.inventory_scraps(catalog_id);
+create index if not exists inventory_scraps_parent_idx on public.inventory_scraps(parent_id);
 create table if not exists public.inventory_events (
   id bigint generated always as identity primary key, actor_id uuid not null, actor_name text not null,
   action text not null, entity text not null, before_data jsonb, after_data jsonb, note text not null default '', created_at timestamptz not null default clock_timestamp()
@@ -162,3 +164,4 @@ do $$ begin
   end if;
 end $$;
 commit;
+

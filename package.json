@@ -1,20 +1,27 @@
 {
-  "name": "compasso-atividades",
-  "version": "1.0.0",
+  "name": "compasso-materiais",
+  "version": "2.0.0",
   "private": true,
   "type": "module",
-  "description": "Gerenciador de atividades com IndexedDB local e sincronização opcional via Supabase.",
+  "description": "Controle industrial de chapas, retalhos e atividades com Supabase.",
   "scripts": {
-    "start": "python3 server.py --no-browser",
-    "start:lan": "python3 server.py --network --no-browser",
+    "start": "npm run build && npm run preview",
     "build": "node scripts/build.mjs",
     "preview": "node scripts/preview.mjs",
-    "test": "node --test tests/unit.test.js",
-    "test:e2e": "playwright test",
-    "test:web": "playwright test --config playwright.web.config.js",
-    "test:database": "node scripts/test-database.mjs"
+    "test": "node --test tests/unit.test.js tests/inventory.test.js",
+    "test:e2e": "playwright test --config playwright.stock.config.js",
+    "test:web": "playwright test --config playwright.stock.config.js",
+    "test:database": "node scripts/test-database.mjs && node scripts/test-inventory.mjs"
   },
   "devDependencies": {
-    "@playwright/test": "1.61.1"
+    "@playwright/test": "1.61.1",
+    "esbuild": "0.28.2",
+    "prettier": "3.10.1"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "2.119.0"
+  },
+  "engines": {
+    "node": ">=24"
   }
 }

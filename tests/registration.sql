@@ -1,0 +1,11 @@
+insert into public.inventory_approved_emails values('allowed@example.test','Operador autorizado');
+insert into auth.users(id,email) values('33333333-3333-4333-8333-333333333333','allowed@example.test');
+select public.test_assert(not exists(select 1 from public.inventory_members where user_id='33333333-3333-4333-8333-333333333333'),'cadastro sem confirmação não recebe acesso');
+update auth.users set email_confirmed_at=now() where id='33333333-3333-4333-8333-333333333333';
+select public.test_assert(exists(select 1 from public.inventory_members where user_id='33333333-3333-4333-8333-333333333333'),'e-mail autorizado confirmado recebe acesso');
+insert into auth.users(id,email,email_confirmed_at) values('44444444-4444-4444-8444-444444444444','outsider@example.test',now());
+select public.test_assert(not exists(select 1 from public.inventory_members where user_id='44444444-4444-4444-8444-444444444444'),'e-mail fora da lista não recebe acesso');
+set role authenticated;
+select public.expect_rejection('select * from public.inventory_approved_emails');
+select public.expect_rejection($q$insert into public.inventory_approved_emails values('self@example.test','Auto autorização')$q$);
+reset role;
